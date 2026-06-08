@@ -33,15 +33,17 @@ button {
 button:active {
     background: #005bb5;
 }
-#resultLink { 
-    display: inline-block; 
-    margin-top: 15px; 
-    color: #007aff; 
-    text-decoration: none; 
-    font-weight: bold; 
-    border: 1px solid #007aff; 
-    padding: 10px; 
-    border-radius: 8px; 
-    width: 90%; 
+/* New style for the multiple gallery links */
+.gallery-link {
+    display: block;
+    padding: 10px;
+    background-color: #e0f7fa;
+    border: 1px solid #00acc1;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #007c91;
+    font-weight: bold;
+    width: 90%;
+    margin: 0 auto;
     box-sizing: border-box;
 }
