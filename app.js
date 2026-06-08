@@ -12,48 +12,70 @@ async function uploadBill() {
         return; 
     }
 
-    status.innerText = "Uploading... please wait.";
+    status.innerText = "Compressing photo... please wait.";
     status.style.color = "black";
 
-    // Read the image and convert it to a base64 string
     const reader = new FileReader();
-    reader.onload = async function(e) {
-        const base64Image = e.target.result;
+    reader.onload = function(e) {
+        // Create an image object to hold the original photo
+        const img = new Image();
+        img.onload = async function() {
+            // Create a hidden canvas to resize the image
+            const canvas = document.createElement('canvas');
+            
+            // Set a maximum width for the bill (1024px is plenty for reading text)
+            const MAX_WIDTH = 1024;
+            const scaleSize = MAX_WIDTH / img.width;
+            
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
 
-        const payload = {
-            action: 'upload',
-            billNumber: billNum,
-            filename: fileInput.name,
-            image: base64Image
-        };
+            // Draw the resized image onto the canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        try {
-            // Send the data to Google Apps Script
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    // Using text/plain prevents CORS preflight errors with Google Scripts
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify(payload)
-            });
+            // Convert the canvas back to a base64 string, compressing it to 70% quality JPEG
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
-            const result = await response.json();
+            status.innerText = "Uploading to Cloud...";
 
-            if (result.success) {
-                status.innerText = "Bill saved successfully!";
-                status.style.color = "green";
-                document.getElementById('billNum').value = '';
-                document.getElementById('fileInput').value = '';
-            } else {
-                status.innerText = "Error saving bill.";
+            const payload = {
+                action: 'upload',
+                billNumber: billNum,
+                filename: fileInput.name || 'bill_photo.jpg',
+                image: compressedBase64 // Sending the lightweight image
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerText = "Bill saved successfully!";
+                    status.style.color = "green";
+                    document.getElementById('billNum').value = '';
+                    document.getElementById('fileInput').value = '';
+                } else {
+                    status.innerText = "Error saving bill: " + result.error;
+                    status.style.color = "red";
+                }
+            } catch (error) {
+                status.innerText = "Connection error. File might still be too large or network is weak.";
                 status.style.color = "red";
+                console.error(error);
             }
-        } catch (error) {
-            status.innerText = "Connection error.";
-            status.style.color = "red";
-        }
+        };
+        // Trigger the image load
+        img.src = e.target.result;
     };
+    // Read the file chosen by the user
     reader.readAsDataURL(fileInput);
 }
 
@@ -67,7 +89,6 @@ async function searchBill() {
     link.style.display = "none";
 
     try {
-        // Send a GET request to Google Apps Script
         const response = await fetch(`${API_URL}?billNumber=${billNum}`);
         const result = await response.json();
 
