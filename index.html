@@ -12,7 +12,7 @@
     <div class="card">
         <h3>Save a New Bill</h3>
         <input type="text" id="billNum" placeholder="Enter Bill Number">
-        <input type="file" id="fileInput" accept="image/*" capture="environment">
+        <input type="file" id="fileInput" accept="image/*" multiple>
         <button onclick="uploadBill()">Upload to Cloud</button>
         <p id="uploadStatus"></p>
     </div>
@@ -22,7 +22,7 @@
         <input type="text" id="searchNum" placeholder="Enter Bill Number">
         <button onclick="searchBill()">Find Bill</button>
         <p id="searchStatus"></p>
-        <a id="resultLink" href="#" target="_blank" style="display:none;">Tap to View Image</a>
+        <div id="imageGallery" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;"></div>
     </div>
 
     <script src="app.js"></script>
