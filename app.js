@@ -1,5 +1,8 @@
-// Your live API link is preserved below
+// YOUR GOOGLE APPS SCRIPT URL
 const API_URL = "https://script.google.com/macros/s/AKfycbx6I7mEOzxNUbgbbrkKMzJydyX_qF5_Cf0NdIqBB1draJAi1xA0cUOo9wwhNWboHFUUzA/exec";
+
+// This array acts as our "Shopping Cart" for photos
+let queuedPhotos = [];
 
 // Helper function to compress a single image
 function compressImage(file) {
@@ -31,31 +34,63 @@ function compressImage(file) {
     });
 }
 
+// NEW FUNCTION: Triggers every time you take a photo
+async function queuePhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const status = document.getElementById('uploadStatus');
+    status.innerText = "Processing photo...";
+    status.style.color = "black";
+
+    // Instantly compress the photo so it doesn't crash the browser
+    const compressedBase64 = await compressImage(file);
+    
+    // Add the photo to our staging array
+    queuedPhotos.push({
+        filename: file.name || `photo_${Date.now()}.jpg`,
+        data: compressedBase64
+    });
+
+    // Show a small thumbnail on the screen
+    const queueDiv = document.getElementById('photoQueue');
+    const imgElement = document.createElement('img');
+    imgElement.src = compressedBase64;
+    imgElement.style.height = "80px";
+    imgElement.style.borderRadius = "8px";
+    imgElement.style.border = "1px solid #ccc";
+    queueDiv.appendChild(imgElement);
+
+    // Clear the camera input so you can immediately take another photo
+    input.value = '';
+    
+    status.innerText = `${queuedPhotos.length} photo(s) ready in queue.`;
+    status.style.color = "#ff9500";
+}
+
 async function uploadBill() {
-    const files = document.getElementById('fileInput').files;
     const billNum = document.getElementById('billNum').value;
     const status = document.getElementById('uploadStatus');
 
-    if (files.length === 0 || !billNum) { 
-        status.innerText = "Please provide both a bill number and at least one photo."; 
+    if (queuedPhotos.length === 0 || !billNum) { 
+        status.innerText = "Please provide a bill number and take at least one photo."; 
         status.style.color = "red";
         return; 
     }
 
     status.style.color = "black";
     let successCount = 0;
+    const totalPhotos = queuedPhotos.length;
 
-    // Loop through each selected file and upload them one by one
-    for (let i = 0; i < files.length; i++) {
-        status.innerText = `Compressing and uploading photo ${i + 1} of ${files.length}...`;
-        
-        const compressedBase64 = await compressImage(files[i]);
+    // Loop through our array and upload them one by one
+    for (let i = 0; i < totalPhotos; i++) {
+        status.innerText = `Uploading photo ${i + 1} of ${totalPhotos}...`;
         
         const payload = {
             action: 'upload',
             billNumber: billNum,
             filename: `bill_${billNum}_part${i+1}.jpg`,
-            image: compressedBase64
+            image: queuedPhotos[i].data // Using data from our array
         };
 
         try {
@@ -74,13 +109,16 @@ async function uploadBill() {
         }
     }
 
-    if (successCount === files.length) {
-        status.innerText = `All ${files.length} photos saved successfully!`;
+    if (successCount === totalPhotos) {
+        status.innerText = `All ${totalPhotos} photos saved successfully!`;
         status.style.color = "green";
+        
+        // Reset everything for the next bill
         document.getElementById('billNum').value = '';
-        document.getElementById('fileInput').value = '';
+        queuedPhotos = []; 
+        document.getElementById('photoQueue').innerHTML = '';
     } else {
-        status.innerText = `Uploaded ${successCount} out of ${files.length} photos. Some failed.`;
+        status.innerText = `Uploaded ${successCount} out of ${totalPhotos} photos. Some failed.`;
         status.style.color = "red";
     }
 }
@@ -94,7 +132,7 @@ async function searchBill() {
     
     status.innerText = "Searching...";
     status.style.color = "black";
-    gallery.innerHTML = ''; // Clear previous images
+    gallery.innerHTML = ''; 
 
     try {
         const response = await fetch(`${API_URL}?billNumber=${billNum}`);
@@ -104,13 +142,12 @@ async function searchBill() {
             status.innerText = `Found ${result.urls.length} photo(s) for this bill!`;
             status.style.color = "green";
             
-            // Create a clickable link for each photo found
             result.urls.forEach((url, index) => {
                 const link = document.createElement('a');
                 link.href = url;
                 link.target = "_blank";
                 link.innerText = `📄 View Photo ${index + 1}`;
-                link.className = "gallery-link"; // Applying the new CSS class
+                link.className = "gallery-link"; 
                 
                 gallery.appendChild(link);
             });
